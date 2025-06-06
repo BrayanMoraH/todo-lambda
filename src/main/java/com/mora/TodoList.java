@@ -58,7 +58,7 @@ public class TodoList implements RequestHandler<APIGatewayProxyRequestEvent, API
 
         switch (httpMethod){
             case "GET":
-                return getAllTodoList();
+                return getAllTodoList(input);
             case "POST":
                 return saveTodoListItem(input);
             case "PUT":
@@ -82,7 +82,6 @@ public class TodoList implements RequestHandler<APIGatewayProxyRequestEvent, API
         }
     }
 
-    //TODO we have not test this method yet
     private APIGatewayProxyResponseEvent updateTask(APIGatewayProxyRequestEvent input) {
         String todoId = input.getPathParameters().getOrDefault("todoId", "");
         APIGatewayProxyResponseEvent responseEvent = new APIGatewayProxyResponseEvent();
@@ -98,15 +97,26 @@ public class TodoList implements RequestHandler<APIGatewayProxyRequestEvent, API
     }
 
 
-    private APIGatewayProxyResponseEvent getAllTodoList() {
-        List<TodoListModel> result = new ArrayList<>();
-        APIGatewayProxyResponseEvent responseEvent = new APIGatewayProxyResponseEvent();
-        try {
-            userTable.scan(ScanEnhancedRequest.builder().build())
-                    .items()
-                    .forEach(result::add);
+    private APIGatewayProxyResponseEvent getAllTodoList(APIGatewayProxyRequestEvent input) {
 
-            return responseEvent.withBody(gson.toJson(result));
+        APIGatewayProxyResponseEvent responseEvent = new APIGatewayProxyResponseEvent();
+        String todoId = input.getPathParameters().getOrDefault("todoId", "");
+        try {
+
+            //We are fetching here all items
+            if(todoId.isEmpty()){
+                List<TodoListModel> result = new ArrayList<>();
+                userTable.scan(ScanEnhancedRequest.builder().build())
+                        .items()
+                        .forEach(result::add);
+
+                return responseEvent.withBody(gson.toJson(result));
+            }
+
+            //We are fetching a single item
+            TodoListModel item = userTable.getItem(Key.builder().partitionValue(todoId).build());
+            return responseEvent.withBody(gson.toJson(item));
+
         }catch (Error e){
             logger.log("Could not get information :(" + e.getMessage());
             return responseEvent.withBody("Something went wrong please check the logs");
